@@ -42,7 +42,7 @@ struct Frame {
 ```
 
 ## DuoWAV
-DuoWAV is a utility to capture samples from the RSPDuo directly to a file.
+DuoWAV is a command-line utility to capture samples from the RSPDuo directly to a file.
 The supported file format is [WAV](https://en.wikipedia.org/wiki/WAV).
 The WAV format supports multi-channel framing, as described above, as well as 16-bit linear PCM and IEEE floating point sample scalar formats.
 While WAV input is supported by many applications some may not support more than 2 channels (i.e. stereo) or the IEEE floating point sample format.
@@ -98,10 +98,17 @@ Arguments:
 ```
 
 ## DuoUDP
+DuoUDP is a command-line utility to packetize samples into [UDP](https://en.wikipedia.org/wiki/User_Datagram_Protocol) packets.
+The purpose of DuoUDP was to provide an easy interface to realtime time-synchronized and framed samples from the RSPDuo.
+The UDP payload will the the sized to use the as much of the MTU as possible while still being a multiple of the frame size.
+Therefore, a frame will never be split across multiple packets.
+Each packet begins with the start of a frame and ends with the end of a frame.
+Note that no metadata (e.g. timecode, packet counter) is provided in the UDP payload, only samples.
+The GNURadio [UDP Source](https://wiki.gnuradio.org/index.php/UDP_Source) block can be used as a receiver and de-packetizer.
 
 ```
 Usage: DuoUDP.exe [-h] [-m mtu] [-a agchz] [-t agcdb] [-l lna] [-d decim]
-                  [-n notch] [-k] [-x] freq [[ipaddr][:port]]
+                  [-n notch] [-f] [-k] [-x] freq [[ipaddr][:port]]
 
 Options:
   -h: print this help message
