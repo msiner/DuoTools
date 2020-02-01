@@ -34,12 +34,12 @@ SOFTWARE.
 
 static const char* USAGE = "\
 Usage: DuoWAV.exe [-h] [-m max] [-a agchz] [-t agcdb] [-l lna] [-d decim]\n\
-                  [-n notch] [-w warmup] [-f] [-k] [-x] freq bytes [path]\n\
+                  [-n notch] [-w warmup] [-o] [-f] [-k] [-x] freq bytes [path]\n\
 \n\
 Options:\n\
   -h: print this help message\n\
   -m max: maximum transfer size in bytes (default=10240)\n\
-  -a 0|5|50|100: AGC frequency in Hz (default=0)\n\
+  -a 0|5|50|100: AGC loop bandwidth in Hz (default=0)\n\
   -t [-72-0]: AGC set point in dBFS (default=-30)\n\
   -l 0-9: LNA state where 0 provides the least RF gain reduction.\n\
       Default value is 4 (20-37 dB reduction depending on frequency).\n\
@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
             }
             break;
         case 'a':
-            if (parseAgcFreq(optarg, &engine.agcFreq)) {
+            if (parseAgcBandwidth(optarg, &engine.agcBandwidth)) {
                 usage();
                 return EXIT_FAILURE;
             }
@@ -267,8 +267,8 @@ int main(int argc, char** argv) {
     }
     printf("Warmup: %u seconds\n", warmup);
     printf("RF Tune Frequency: %f Hz\n", engine.tuneFreq);
-    printf("AGC Frequency: %u Hz\n", engine.agcFreq);
-    if (engine.agcFreq > 0) {
+    printf("AGC Loop Bandwidth: %u Hz\n", engine.agcBandwidth);
+    if (engine.agcBandwidth > 0) {
         printf("AGC Set Point: %d dBFS\n", engine.agcSetPoint);
     }
     printf("LNA State: %u\n", engine.lnaState);

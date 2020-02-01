@@ -116,14 +116,14 @@ static int parseSize(char* arg, size_t* result) {
 }
 
 
-static int parseAgcFreq(char* arg, unsigned int* result) {
+static int parseAgcBandwidth(char* arg, unsigned int* result) {
     unsigned int tmp;
     if (parseUintArg(arg, &tmp, 10)) {
-        printf("invalid AGC frequency, must be an unsigned int\n");
+        printf("invalid AGC loop bandwidth, must be an unsigned int\n");
         return 1;
     }
     if (tmp != 0 && tmp != 5 && tmp != 50 && tmp != 100) {
-        printf("invalid AGC frequency, must be 0, 5, 10, or 100\n");
+        printf("invalid AGC loop bandwidth, must be 0, 5, 10, or 100\n");
         return 1;
     }
     *result = tmp;

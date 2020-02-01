@@ -86,8 +86,8 @@ typedef int (*DuoEngineControlCallback)(void *userContext);
 struct DuoEngine {
     // tuning frequency in Hz
     float tuneFreq;
-    // AGC frequency in Hz, valid values are 0, 5, 50, 100
-    unsigned int agcFreq;
+    // AGC loop bandwidth in Hz, valid values are 0, 5, 50, 100
+    unsigned int agcBandwidth;
     // AGC set point in dBFS
     int agcSetPoint;
     // LNA state in [0-9] where 0 is maximum gain
@@ -143,8 +143,8 @@ struct DuoEngine {
 };
 
 
-#ifndef DEFAULT_AGC_FREQ
-#define DEFAULT_AGC_FREQ (0)
+#ifndef DEFAULT_AGC_BANDWIDTH
+#define DEFAULT_AGC_BANDWIDTH (0)
 #endif
 
 #ifndef DEFAULT_AGC_SET_POINT
@@ -171,7 +171,7 @@ struct DuoEngine {
 */
 static void duoEngineInit(struct DuoEngine* engine) {
     memset(engine, 0, sizeof(struct DuoEngine));
-    engine->agcFreq = DEFAULT_AGC_FREQ;
+    engine->agcBandwidth = DEFAULT_AGC_BANDWIDTH;
     engine->agcSetPoint = DEFAULT_AGC_SET_POINT;
     engine->lnaState = DEFAULT_LNA_STATE;
     engine->decimFactor = DEFAULT_DECIM_FACTOR;

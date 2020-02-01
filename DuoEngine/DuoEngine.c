@@ -410,17 +410,17 @@ static void configureChannel(
 
     // Set AGC
     chanParams->ctrlParams.agc.enable = sdrplay_api_AGC_DISABLE;
-    if (engine->agcFreq == 5) {
+    if (engine->agcBandwidth == 5) {
         chanParams->ctrlParams.agc.enable = sdrplay_api_AGC_5HZ;
     }
-    else if (engine->agcFreq == 50) {
+    else if (engine->agcBandwidth == 50) {
         chanParams->ctrlParams.agc.enable = sdrplay_api_AGC_50HZ;
     }
-    else if (engine->agcFreq == 100) {
+    else if (engine->agcBandwidth == 100) {
         chanParams->ctrlParams.agc.enable = sdrplay_api_AGC_100HZ;
     }
-    else if (engine->agcFreq != 0) {
-        printf("invalid AGC frequency [%u], AGC disabled\n", engine->agcFreq);
+    else if (engine->agcBandwidth != 0) {
+        printf("invalid AGC bandwidth [%u], AGC disabled\n", engine->agcBandwidth);
     }
 
     if (chanParams->ctrlParams.agc.enable != sdrplay_api_AGC_DISABLE) {
