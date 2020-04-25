@@ -1,0 +1,7 @@
+{
+    "duowav_path": "..\\..\\x64\\Release\\DuoWAV.exe",
+    "lna_state": 0,
+    "file_size": 1e6,
+    "warmup": 5,
+    "decimation": 4
+}
