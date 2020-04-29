@@ -179,6 +179,11 @@ static int parseAddrPort(
 }
 
 
+static void messageCallback(const char* msg, void* userContext) {
+    printf("%s\n", msg);
+}
+
+
 static void usage(void) {
     printf(USAGE);
 }
@@ -314,6 +319,7 @@ int main(int argc, char** argv) {
     engine.userContext = &context;
     engine.transferCallback = transferCallback;
     engine.controlCallback = controlCallback;
+    engine.messageCallback = messageCallback;
 
     printf("PRESS q to QUIT\n");
     rcode = duoEngineRun(&engine);

@@ -21,10 +21,11 @@ SOFTWARE.
 */
 
 #include <Windows.h>
+#include <conio.h>
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <conio.h>
+#include <stdarg.h>
 
 #include "sdrplay_api.h"
 
@@ -32,6 +33,8 @@ SOFTWARE.
 
 
 #define MAX_DEVS (6)
+#define MAX_MSG_LEN (1024)
+
 static const float SAMPLE_FREQ_DEFAULT = 6000000.0;
 static const float SAMPLE_FREQ_MAXFS = 8000000.0;
 
@@ -53,9 +56,27 @@ struct Context {
     // User parameters
     DuoEngineTransferCallback transferCallback;
     DuoEngineControlCallback controlCallback;
+    DuoEngineMessageCallback messageCallback;
     void* userContext;
     struct DuoEngineTransfer transfer;
+    char msg[MAX_MSG_LEN];
 };
+
+
+/**
+* Formats and transfers message to DuoEngine user by call messageCallback()
+*
+* @params context DuoEngine context
+*/
+static void doMessage(struct Context* context, const char *fmt, ...) {
+    if (context->messageCallback) {
+        va_list argp;
+        va_start(argp, fmt);
+        vsnprintf(context->msg, MAX_MSG_LEN, fmt, argp);
+        context->messageCallback(context->msg, context->userContext);
+        va_end(argp);
+    }
+}
 
 
 /**
@@ -86,7 +107,7 @@ static void callbackStreamA(
         unsigned int numSamples, unsigned int reset, void *cbContext) {
     struct Context* context = (struct Context*)cbContext;
     if (reset) {
-        printf("sdrplay_api_StreamACallback: numSamples=%d\n", numSamples);
+        doMessage(context, "sdrplay_api_StreamACallback: numSamples=%d", numSamples);
         context->numSamplesA = 0;
         context->numSamplesB = 0;
         context->rxIdx = 0;
@@ -94,10 +115,10 @@ static void callbackStreamA(
     }
 
     if (!reset && (context->numSamplesA || context->numSamplesB == 0)) {
-        printf("buffer overflow: stream B has not been handled\n");
+        doMessage(context, "buffer overflow: stream B has not been handled");
     }
     else if (!reset && context->numSamplesB != numSamples) {
-        printf("buffer out of sync: numSamplesA=%u numSamplesB=%u\n", numSamples, context->numSamplesB);
+        doMessage(context, "buffer out of sync: numSamplesA=%u numSamplesB=%u", numSamples, context->numSamplesB);
     }
     else {
         context->numSamplesA = numSamples;
@@ -144,14 +165,14 @@ static void callbackStreamB(
         unsigned int numSamples, unsigned int reset, void *cbContext) {
     struct Context* context = (struct Context*)cbContext;
     if (reset) {
-        printf("sdrplay_api_StreamBCallback: numSamples=%d\n", numSamples);
+        doMessage(context, "sdrplay_api_StreamBCallback: numSamples=%d", numSamples);
     }
 
     if (context->numSamplesA == 0) {
-        printf("buffer out of sync: stream A has not been handled\n");
+        doMessage(context, "buffer out of sync: stream A has not been handled");
     }
     else if (context->numSamplesA != numSamples) {
-        printf("buffer out of sync: numSamplesA=%u numSamplesB=%u\n", context->numSamplesA, numSamples);
+        doMessage(context, "buffer out of sync: numSamplesA=%u numSamplesB=%u", context->numSamplesA, numSamples);
     }
     else {
         context->numSamplesB = numSamples;
@@ -212,15 +233,17 @@ static void callbackEvent(
     struct Context* context = (struct Context*)cbContext;
     switch (eventId) {
     case sdrplay_api_GainChange:
-        printf(
-            "sdrplay_api_EventCb: %s, tuner=%s gRdB=%d lnaGRdB=%d systemGain=%.2f\n",
+        doMessage(
+            context,
+            "sdrplay_api_EventCb: %s, tuner=%s gRdB=%d lnaGRdB=%d systemGain=%.2f",
             "sdrplay_api_GainChange", (tuner == sdrplay_api_Tuner_A) ? "sdrplay_api_Tuner_A" :
             "sdrplay_api_Tuner_B", params->gainParams.gRdB, params->gainParams.lnaGRdB,
              params->gainParams.currGain);
         break;
     case sdrplay_api_PowerOverloadChange:
-        printf(
-            "sdrplay_api_PowerOverloadChange: tuner=%s powerOverloadChangeType=%s\n",
+        doMessage(
+            context,
+            "sdrplay_api_PowerOverloadChange: tuner=%s powerOverloadChangeType=%s",
             (tuner == sdrplay_api_Tuner_A) ? "sdrplay_api_Tuner_A" : "sdrplay_api_Tuner_B",
             (params->powerOverloadParams.powerOverloadChangeType ==
              sdrplay_api_Overload_Detected) ? "sdrplay_api_Overload_Detected" :
@@ -232,10 +255,10 @@ static void callbackEvent(
             sdrplay_api_Update_Ext1_None);
         break;
     case sdrplay_api_DeviceRemoved:
-        printf("sdrplay_api_EventCb: %s\n", "sdrplay_api_DeviceRemoved");
+        doMessage(context, "sdrplay_api_EventCb: %s", "sdrplay_api_DeviceRemoved");
         break;
     default:
-        printf("sdrplay_api_EventCb: %d, unhandled event\n", eventId);
+        doMessage(context, "sdrplay_api_EventCb: %d, unhandled event", eventId);
         break;
     }
 }
@@ -246,34 +269,35 @@ static void callbackEvent(
 * If openApi() succeeds, sdrplay_api_Close() should be called
 * when API access is no longer needed.
 *
+* @param context pointer to DuoEngine Context passed to sdrplay_api
 * @param debugEnabled true to enabled API debugging
 *
 * @return zero on success, non-zero otherwise
 */
-static int openApi(bool debugEnabled) {
+static int openApi(struct Context* context, bool debugEnabled) {
     sdrplay_api_ErrT err;
     float ver = 0.0;
 
     if ((err = sdrplay_api_Open()) != sdrplay_api_Success) {
-        printf("sdrplay_api_Open failed %s\n", sdrplay_api_GetErrorString(err));
+        doMessage(context, "sdrplay_api_Open failed %s", sdrplay_api_GetErrorString(err));
         return 1;
     }
 
     // Enable debug logging output
     if ((err = sdrplay_api_DebugEnable(NULL, debugEnabled)) != sdrplay_api_Success) {
-        printf("sdrplay_api_DebugEnable failed %s\n", sdrplay_api_GetErrorString(err));
+        doMessage(context, "sdrplay_api_DebugEnable failed %s", sdrplay_api_GetErrorString(err));
         sdrplay_api_Close();
         return 1;
     }
 
     // Check API runtime version matches buildtime version
     if ((err = sdrplay_api_ApiVersion(&ver)) != sdrplay_api_Success) {
-        printf("sdrplay_api_ApiVersion failed %s\n", sdrplay_api_GetErrorString(err));
+        doMessage(context, "sdrplay_api_ApiVersion failed %s", sdrplay_api_GetErrorString(err));
         sdrplay_api_Close();
         return 1;
     }
     if (ver != SDRPLAY_API_VERSION) {
-        printf("API version don't match (local=%.2f dll=%.2f)\n", SDRPLAY_API_VERSION, ver);
+        doMessage(context, "API version don't match (local=%.2f dll=%.2f)", SDRPLAY_API_VERSION, ver);
         sdrplay_api_Close();
         return 1;
     }
@@ -287,13 +311,12 @@ static int openApi(bool debugEnabled) {
 * If getDevice() succeeds, sdrplay_api_ReleaseDevice() should be
 * called when device access is no longer needed.
 *
-* @param device pointer to sdrplay_api_DeviceT to fill in with
-*               reserved device fields
+* @param context pointer to DuoEngine Context passed to sdrplay_api
 * @param maxFs true to use the maximum 8 MHz ADC master sample rate
 *
 * @return zero on success, non-zero otherwise
 */
-static int getDevice(sdrplay_api_DeviceT* device, bool maxFs) {
+static int getDevice(struct Context* context, bool maxFs) {
     sdrplay_api_ErrT err;
     sdrplay_api_DeviceT devs[MAX_DEVS];
     unsigned int numDevs = 0;
@@ -302,32 +325,32 @@ static int getDevice(sdrplay_api_DeviceT* device, bool maxFs) {
 
     // Fetch list of available devices
     if ((err = sdrplay_api_GetDevices(devs, &numDevs, MAX_DEVS)) != sdrplay_api_Success) {
-        printf("sdrplay_api_GetDevices failed %s\n", sdrplay_api_GetErrorString(err));
+        doMessage(context, "sdrplay_api_GetDevices failed %s", sdrplay_api_GetErrorString(err));
         return 0;
     }
-    printf("MaxDevs=%d NumDevs=%d\n", MAX_DEVS, numDevs);
+    doMessage(context, "MaxDevs=%d NumDevs=%d", MAX_DEVS, numDevs);
     if (numDevs > 0) {
         for (unsigned int devIdx = 0; devIdx < numDevs; devIdx++) {
             sdrplay_api_DeviceT* curr = &devs[devIdx];
             if (curr->hwVer == SDRPLAY_RSPduo_ID) {
-                printf("Dev[%u]: SerNo=%s hwVer=%d tuner=0x%.2x rspDuoMode=0x%.2x\n", devIdx,
+                doMessage(context, "Dev[%u]: SerNo=%s hwVer=%d tuner=0x%.2x rspDuoMode=0x%.2x", devIdx,
                        curr->SerNo, curr->hwVer, curr->tuner, curr->rspDuoMode);
                 if (!found && !(curr->rspDuoMode & sdrplay_api_RspDuoMode_Dual_Tuner)) {
-                    printf("Dual tuner mode unavailable\n");
+                    doMessage(context, "Dual tuner mode unavailable");
                 }
                 else if (!found) {
-                    *device = *curr;
+                    context->device = *curr;
                     chosenIdx = devIdx;
                     found = true;
                 }
             }
             else {
-                printf("Dev%d: SerNo=%s hwVer=%d tuner=0x%.2x\n", devIdx,
+                doMessage(context, "Dev%d: SerNo=%s hwVer=%d tuner=0x%.2x", devIdx,
                        curr->SerNo, curr->hwVer, curr->tuner);
             }
         }
         if (!found) {
-            printf("No suitable RSPDuo devices available\n");
+            doMessage(context, "No suitable RSPDuo devices available");
             return 1;
         }
     }
@@ -336,21 +359,21 @@ static int getDevice(sdrplay_api_DeviceT* device, bool maxFs) {
     }
 
     // Select tuner based on user input (or default to TunerA)
-    device->tuner = sdrplay_api_Tuner_Both;
+    context->device.tuner = sdrplay_api_Tuner_Both;
 
     // Set operating mode
-    device->rspDuoMode = sdrplay_api_RspDuoMode_Dual_Tuner;
+    context->device.rspDuoMode = sdrplay_api_RspDuoMode_Dual_Tuner;
     if (maxFs) {
-        device->rspDuoSampleFreq = SAMPLE_FREQ_MAXFS;
+        context->device.rspDuoSampleFreq = SAMPLE_FREQ_MAXFS;
     }
     else {
-        device->rspDuoSampleFreq = SAMPLE_FREQ_DEFAULT;
+        context->device.rspDuoSampleFreq = SAMPLE_FREQ_DEFAULT;
     }
-    printf("Selected index=%u SerNo=%s\n", chosenIdx, device->SerNo);
+    doMessage(context, "Selected index=%u SerNo=%s", chosenIdx, context->device.SerNo);
 
     // Select chosen device
-    if ((err = sdrplay_api_SelectDevice(device)) != sdrplay_api_Success) {
-        printf("sdrplay_api_SelectDevice failed %s\n", sdrplay_api_GetErrorString(err));
+    if ((err = sdrplay_api_SelectDevice(&context->device)) != sdrplay_api_Success) {
+        doMessage(context, "sdrplay_api_SelectDevice failed %s", sdrplay_api_GetErrorString(err));
         return 1;
     }
     return 0;
@@ -362,11 +385,12 @@ static int getDevice(sdrplay_api_DeviceT* device, bool maxFs) {
 * This has been wrapped into a single function because DuoEngine
 * configures the tuner identically.
 *
+* @param context pointer to DuoEngine Context passed to sdrplay_api
 * @param chanParams channel/tuner to configure
 * @param engine pointer to DuoEngine configuration
 */
 static void configureChannel(
-        sdrplay_api_RxChannelParamsT *chanParams, struct DuoEngine* engine) {
+        struct Context* context, sdrplay_api_RxChannelParamsT *chanParams, struct DuoEngine* engine) {
     // Set center frequency
     chanParams->tunerParams.rfFreq.rfHz = engine->tuneFreq;
 
@@ -420,7 +444,7 @@ static void configureChannel(
         chanParams->ctrlParams.agc.enable = sdrplay_api_AGC_100HZ;
     }
     else if (engine->agcBandwidth != 0) {
-        printf("invalid AGC bandwidth [%u], AGC disabled\n", engine->agcBandwidth);
+        doMessage(context, "invalid AGC bandwidth [%u], AGC disabled", engine->agcBandwidth);
     }
 
     if (chanParams->ctrlParams.agc.enable != sdrplay_api_AGC_DISABLE) {
@@ -437,8 +461,9 @@ static void configureChannel(
         chanParams->ctrlParams.decimation.decimationFactor = engine->decimFactor;
     }
     else if (engine->decimFactor != 1) {
-        printf(
-            "invalid decimation factor got=%u, decimation disabled\n",
+        doMessage(
+            context,
+            "invalid decimation factor got=%u, decimation disabled",
             engine->decimFactor);
     }
 }
@@ -448,26 +473,26 @@ static void configureChannel(
 * Call necessary functions to configure an RSPDuo
 * The getDevice() function should be called before this function.
 *
-* @param device pointer to sdrplay_api_DeviceT to configure
+* @param context pointer to DuoEngine Context passed to sdrplay_api
 * @param engine pointer to DuoEngine configuration
 *
 * @return pointer to configured device parameters
 */
 static sdrplay_api_DeviceParamsT* configureDevice(
-        sdrplay_api_DeviceT* device, struct DuoEngine* engine) {
+        struct Context* context, struct DuoEngine* engine) {
     sdrplay_api_ErrT err;
     sdrplay_api_DeviceParamsT* params = NULL;
 
     // Retrieve device parameters so they can be changed if wanted
-    if ((err = sdrplay_api_GetDeviceParams(device->dev, &params)) != sdrplay_api_Success) {
-        printf("sdrplay_api_GetDeviceParams failed %s\n",
+    if ((err = sdrplay_api_GetDeviceParams(context->device.dev, &params)) != sdrplay_api_Success) {
+        doMessage(context, "sdrplay_api_GetDeviceParams failed %s",
                sdrplay_api_GetErrorString(err));
         return NULL;
     }
 
     // Check for NULL pointers before changing settings
     if (params == NULL) {
-        printf("sdrplay_api_GetDeviceParams returned NULL deviceParams pointer\n");
+        doMessage(context, "sdrplay_api_GetDeviceParams returned NULL deviceParams pointer");
         return NULL;
     }
 
@@ -488,8 +513,8 @@ static sdrplay_api_DeviceParamsT* configureDevice(
     }
 
     // Configure both channels identically
-    configureChannel(params->rxChannelA, engine);
-    configureChannel(params->rxChannelB, engine);
+    configureChannel(context, params->rxChannelA, engine);
+    configureChannel(context, params->rxChannelB, engine);
 
     return params;
 }
@@ -516,7 +541,7 @@ static int controlLoop(struct Context* context) {
     // Now we're ready to start by calling the initialisation function
     // This will configure the device and start streaming
     if ((err = sdrplay_api_Init(context->device.dev, &callbacks, context)) != sdrplay_api_Success) {
-        printf("sdrplay_api_Init failed %s\n", sdrplay_api_GetErrorString(err));
+        doMessage(context, "sdrplay_api_Init failed %s", sdrplay_api_GetErrorString(err));
         return 1;
     }
 
@@ -533,7 +558,7 @@ static int controlLoop(struct Context* context) {
 
     // Finished with device so uninitialise it
     if ((err = sdrplay_api_Uninit(context->device.dev)) != sdrplay_api_Success) {
-        printf("sdrplay_api_Uninit failed %s\n", sdrplay_api_GetErrorString(err));
+        doMessage(context, "sdrplay_api_Uninit failed %s", sdrplay_api_GetErrorString(err));
         return 1;
     }
 
@@ -588,20 +613,21 @@ int duoEngineRun(struct DuoEngine* engine) {
     context.txIdx = 0;
     context.transferCallback = engine->transferCallback;
     context.controlCallback = engine->controlCallback;
+    context.messageCallback = engine->messageCallback;
     context.userContext = engine->userContext;
 
-    rcode = openApi(engine->apiDebug);
+    rcode = openApi(&context, engine->apiDebug);
     if (rcode == 0) {
         // Lock API while device selection is performed
         sdrplay_api_LockDeviceApi();
 
-        rcode = getDevice(&context.device, engine->maxSampleRate);
+        rcode = getDevice(&context, engine->maxSampleRate);
 
         // Unlock API now that device is selected
         sdrplay_api_UnlockDeviceApi();
 
         if (rcode == 0) {
-            context.params = configureDevice(&context.device, engine);
+            context.params = configureDevice(&context, engine);
             if (context.params != NULL) {
                 rcode = controlLoop(&context);
             }
