@@ -54,6 +54,27 @@ struct DuoEngineTransfer {
 
 
 /**
+* Runtime control structure for DuoEngine
+* Passed to user via DuoEngineControlCallback implementation.
+* User can see current settings and make modifications.
+*/
+struct DuoEngineControl {
+    // tuning frequency in Hz
+    float tuneFreq;
+    // AGC loop bandwidth in Hz, valid values are 0, 5, 50, 100
+    unsigned int agcBandwidth;
+    // AGC set point in dBFS
+    int agcSetPoint;
+    // LNA state in [0-9] where 0 is maximum gain
+    unsigned int lnaState;
+    // true to enable the frontend MW/FM notch filters
+    bool notchMwfm;
+    // true to enable the frontend DAB notch filter
+    bool notchDab;
+};
+
+
+/**
 * Function type to implement for user to receive data from DuoEngine
 *
 * @param transfer pointer to transfer object
@@ -75,7 +96,7 @@ typedef void (*DuoEngineTransferCallback)(struct DuoEngineTransfer* transfer, vo
 *
 * @return zero to continue, non-zero to signal DuoEngine to stop
 */
-typedef int (*DuoEngineControlCallback)(void *userContext);
+typedef int (*DuoEngineControlCallback)(struct DuoEngineControl* control, void *userContext);
 
 
 /**

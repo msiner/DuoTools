@@ -125,7 +125,7 @@ static void transferCallback(struct DuoEngineTransfer* transfer, void* userConte
 }
 
 
-static int controlCallback(void* userContext) {
+static int controlCallback(struct DuoEngineControl* control, void* userContext) {
     struct Context* context = (struct Context*)userContext;
     if (_kbhit()) {
         char ctrl = _getch();

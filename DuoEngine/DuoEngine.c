@@ -470,6 +470,53 @@ static void configureChannel(
 
 
 /**
+* Reconfigure one channel/tuner.
+* This has been wrapped into a single function because DuoEngine
+* configures the tuner identically.
+*
+* @param context pointer to DuoEngine Context passed to sdrplay_api
+* @param chanParams channel/tuner to configure
+* @param control pointer to DuoEngineControl configuration
+*/
+static void reconfigureChannel(
+        struct Context* context, sdrplay_api_RxChannelParamsT *chanParams, struct DuoEngineControl* control) {
+    // Set center frequency
+    chanParams->tunerParams.rfFreq.rfHz = control->tuneFreq;
+
+    // Configure notch filters
+    chanParams->rspDuoTunerParams.rfNotchEnable = 0;
+    chanParams->rspDuoTunerParams.rfDabNotchEnable = 0;
+    if (control->notchMwfm) {
+        chanParams->rspDuoTunerParams.rfNotchEnable = 1;
+    }
+    if (control->notchDab) {
+        chanParams->rspDuoTunerParams.rfDabNotchEnable = 1;
+    }
+
+    // Set gain
+    chanParams->tunerParams.gain.gRdB = 40;
+    chanParams->tunerParams.gain.LNAstate = min(control->lnaState, 9);
+
+    // Set AGC
+    chanParams->ctrlParams.agc.enable = sdrplay_api_AGC_DISABLE;
+    if (control->agcBandwidth == 5) {
+        chanParams->ctrlParams.agc.enable = sdrplay_api_AGC_5HZ;
+    }
+    else if (control->agcBandwidth == 50) {
+        chanParams->ctrlParams.agc.enable = sdrplay_api_AGC_50HZ;
+    }
+    else if (control->agcBandwidth == 100) {
+        chanParams->ctrlParams.agc.enable = sdrplay_api_AGC_100HZ;
+    }
+    else if (control->agcBandwidth != 0) {
+        doMessage(context, "invalid AGC bandwidth [%u], AGC disabled", control->agcBandwidth);
+    }
+
+    chanParams->ctrlParams.agc.setPoint_dBfs = min(control->agcSetPoint, 0);
+}
+
+
+/**
 * Call necessary functions to configure an RSPDuo
 * The getDevice() function should be called before this function.
 *
@@ -520,6 +567,83 @@ static sdrplay_api_DeviceParamsT* configureDevice(
 }
 
 
+static void populateControl(struct Context* context, struct DuoEngineControl* control) {
+    sdrplay_api_ErrT err;
+    sdrplay_api_DeviceParamsT* params = NULL;
+    sdrplay_api_RxChannelParamsT *chanParams = NULL;
+
+    // Retrieve device parameters so they can be changed if wanted
+    if ((err = sdrplay_api_GetDeviceParams(context->device.dev, &params)) != sdrplay_api_Success) {
+        doMessage(context, "sdrplay_api_GetDeviceParams failed %s",
+               sdrplay_api_GetErrorString(err));
+        return;
+    }
+    chanParams = params->rxChannelA;
+    control->tuneFreq = chanParams->tunerParams.rfFreq.rfHz;
+    control->agcBandwidth = chanParams->ctrlParams.agc.enable;
+    control->agcSetPoint = chanParams->ctrlParams.agc.setPoint_dBfs;
+    control->lnaState = chanParams->tunerParams.gain.LNAstate;
+    control->notchMwfm = chanParams->rspDuoTunerParams.rfNotchEnable;
+    control->notchDab = chanParams->rspDuoTunerParams.rfDabNotchEnable;
+
+    if (control->agcBandwidth == sdrplay_api_AGC_DISABLE) {
+        control->agcBandwidth = 0;
+    } else if (control->agcBandwidth == sdrplay_api_AGC_5HZ) {
+        control->agcBandwidth = 5;
+    } else if (control->agcBandwidth == sdrplay_api_AGC_50HZ) {
+        control->agcBandwidth = 50;
+    } else if (control->agcBandwidth == sdrplay_api_AGC_100HZ) {
+        control->agcBandwidth = 100;
+    }
+}
+
+
+static void applyControl(struct Context* context, struct DuoEngineControl* orig, struct DuoEngineControl* control) {
+    sdrplay_api_ErrT err;
+    sdrplay_api_DeviceParamsT* params = NULL;
+    sdrplay_api_RxChannelParamsT *chanParams = NULL;
+
+    // Retrieve device parameters so they can be changed if wanted
+    if ((err = sdrplay_api_GetDeviceParams(context->device.dev, &params)) != sdrplay_api_Success) {
+        doMessage(context, "sdrplay_api_GetDeviceParams failed %s",
+               sdrplay_api_GetErrorString(err));
+        return;
+    }
+    // Configure both channels identically
+    reconfigureChannel(context, params->rxChannelA, control);
+    reconfigureChannel(context, params->rxChannelB, control);
+    if (orig->tuneFreq != control->tuneFreq) {
+        sdrplay_api_Update(
+                context->device.dev, sdrplay_api_Tuner_Both,
+                sdrplay_api_Update_Tuner_Frf,
+                sdrplay_api_Update_Ext1_None);
+    }
+    if ((orig->agcBandwidth != control->agcBandwidth) || (orig->agcSetPoint != control->agcSetPoint)) {
+        sdrplay_api_Update(
+                context->device.dev, sdrplay_api_Tuner_Both,
+                sdrplay_api_Update_Ctrl_Agc,
+                sdrplay_api_Update_Ext1_None);
+    }
+    if (orig->lnaState != control->lnaState) {
+        sdrplay_api_Update(
+                context->device.dev, sdrplay_api_Tuner_Both,
+                sdrplay_api_Update_Tuner_Gr,
+                sdrplay_api_Update_Ext1_None);
+    }
+    if (orig->notchMwfm != control->notchMwfm) {
+        sdrplay_api_Update(
+                context->device.dev, sdrplay_api_Tuner_Both,
+                sdrplay_api_Update_RspDuo_RfNotchControl,
+                sdrplay_api_Update_Ext1_None);
+    }
+    if (orig->notchDab != control->notchDab) {
+        sdrplay_api_Update(
+                context->device.dev, sdrplay_api_Tuner_Both,
+                sdrplay_api_Update_RspDuo_RfDabNotchControl,
+                sdrplay_api_Update_Ext1_None);
+    }
+}
+
 /**
 * Blocking function that loops for as long as DuoEngine is running.
 * Calls user-specified controlCallback() on a regular interval.
@@ -532,6 +656,8 @@ static int controlLoop(struct Context* context) {
     sdrplay_api_ErrT err;
     sdrplay_api_CallbackFnsT callbacks;
     int rcode = 0;
+    struct DuoEngineControl origControl;
+    struct DuoEngineControl userControl;
 
     // Assign callback functions to be passed to sdrplay_api_Init()
     callbacks.StreamACbFn = callbackStreamA;
@@ -548,9 +674,14 @@ static int controlLoop(struct Context* context) {
     // Loop allowing user control in main thread
     while (true) {
         if (context->controlCallback != NULL) {
-            rcode = context->controlCallback(context->userContext);
+            populateControl(context, &origControl);
+            userControl = origControl;
+            rcode = context->controlCallback(&userControl, context->userContext);
             if (rcode != 0) {
                 break;
+            }
+            if (memcmp(&origControl, &userControl, sizeof(origControl))) {
+                applyControl(context, &origControl, &userControl);
             }
         }
         Sleep(100);

@@ -93,11 +93,19 @@ static void transferCallback(struct DuoEngineTransfer* transfer, void* userConte
 }
 
 
-static int controlCallback(void* userContext) {
+static int controlCallback(struct DuoEngineControl* control, void* userContext) {
     if (_kbhit()) {
         char ctrl = _getch();
         if (ctrl == 'q') {
             return 1;
+        }
+        else if (ctrl == '[') {
+            control->lnaState++;
+        }
+        else if (ctrl == ']') {
+            if (control->lnaState > 0) {
+                control->lnaState--;
+            }
         }
     }
     return 0;
