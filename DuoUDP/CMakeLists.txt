@@ -9,4 +9,5 @@ add_executable(
     DuoUDP
     DuoUDP.c
     ${PROJECT_SOURCE_DIR}/DuoEngine/DuoEngine.h
-    ${PROJECT_SOURCE_DIR}/DuoEngine/DuoParse.h)
+    ${PROJECT_SOURCE_DIR}/DuoEngine/DuoParse.h
+    ${PROJECT_SOURCE_DIR}/DuoEngine/getopt.h)

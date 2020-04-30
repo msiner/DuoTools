@@ -567,6 +567,12 @@ static sdrplay_api_DeviceParamsT* configureDevice(
 }
 
 
+/**
+* Get device params and fill in the provided DuoEngineControl
+*
+* @param context pointer to DuoEngine Context passed to sdrplay_api
+* @param control pointer to DuoEngineControl runtime configuration
+*/
 static void populateControl(struct Context* context, struct DuoEngineControl* control) {
     sdrplay_api_ErrT err;
     sdrplay_api_DeviceParamsT* params = NULL;
@@ -598,6 +604,18 @@ static void populateControl(struct Context* context, struct DuoEngineControl* co
 }
 
 
+/**
+* Apply runtime configuration changes in the supplied DuoEngineControl.
+* Compares orig and control parameters to detect which settings to
+* update with sdrplay_api.
+* The expected workflow is to use populateControl() to get the current
+* settings, copy to a second instance, make changes to the second
+* instance, then pass both instances to applyControl().
+*
+* @param context pointer to DuoEngine Context passed to sdrplay_api
+* @param orig pointer to DuoEngineControl with state before desired changes
+* @param control pointer to DuoEngineControl runtime configuration
+*/
 static void applyControl(struct Context* context, struct DuoEngineControl* orig, struct DuoEngineControl* control) {
     sdrplay_api_ErrT err;
     sdrplay_api_DeviceParamsT* params = NULL;
