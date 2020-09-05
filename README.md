@@ -100,8 +100,8 @@ Arguments:
 ## DuoUDP
 DuoUDP is a command-line utility to packetize samples into [UDP](https://en.wikipedia.org/wiki/User_Datagram_Protocol) packets.
 The purpose of DuoUDP was to provide an easy interface to realtime time-synchronized and framed samples from the RSPDuo.
-The UDP payload will sized to use the as much of the MTU as possible while still being a multiple of the frame size.
-Therefore, a frame will never be split across multiple packets.
+The UDP payload size will automatically selected to use the as much of the MTU as possible while still being a multiple of the frame size.
+With this restriction, a frame will never be split across multiple packets.
 Each packet begins with the start of a frame and ends with the end of a frame.
 Note that no metadata (e.g. timecode, packet counter) is provided in the UDP payload, only samples.
 The GNURadio [UDP Source](https://wiki.gnuradio.org/index.php/UDP_Source) block can be used as a receiver and de-packetizer.
