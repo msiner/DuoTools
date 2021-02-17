@@ -23,10 +23,15 @@ SOFTWARE.
 #ifndef DUOPARSE_H
 #define DUOPARSE_H
 
+#if defined(_WIN32) || (_WIN64)
 #include <winsock.h>
+#endif
 
+#include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #include "DuoEngine.h"
 

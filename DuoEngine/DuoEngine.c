@@ -20,16 +20,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>
 #include <conio.h>
+#else
+#include <unistd.h>
+#define min(a,b) (((a)<(b))?(a):(b))
+#endif
 
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
 
 #include "sdrplay_api.h"
 
-#include "duoengine.h"
+#include "DuoEngine.h"
 
 
 #define MAX_DEVS (6)
@@ -702,7 +708,11 @@ static int controlLoop(struct Context* context) {
                 applyControl(context, &origControl, &userControl);
             }
         }
+#if defined(_WIN32) || (_WIN64)
         Sleep(100);
+#else
+	usleep(100000);
+#endif
     }
 
     // Finished with device so uninitialise it
@@ -711,7 +721,11 @@ static int controlLoop(struct Context* context) {
         return 1;
     }
 
+#if defined(_WIN32) || (_WIN64)
     Sleep(1000);
+#else
+    sleep(1);
+#endif
 
     return 0;
 }

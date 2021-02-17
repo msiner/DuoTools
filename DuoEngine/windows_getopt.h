@@ -17,8 +17,8 @@
 *
 ******************************************************************/
 
-#ifndef GETOPT_H
-#define GETOPT_H
+#ifndef WINDOWS_GETOPT_H
+#define WINDOWS_GETOPT_H
 
 #include <windows.h>
 

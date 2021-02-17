@@ -20,13 +20,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>
 #include <conio.h>
+#include "windows_getopt.h"
+#else
+#include <getopt.h>
+#include "posix_conio.h"
+#endif
 
 #include <stdio.h>
 #include <time.h>
 
-#include "getopt.h"
 #include "DuoEngine.h"
 #include "DuoParse.h"
 #include "wav.h"
@@ -299,11 +304,19 @@ int main(int argc, char** argv) {
 
     // Open output file
     // Need the "b" binary option to avoid translations
+ #if defined(_WIN32) || defined(_WIN64)
     errno_t err = fopen_s(&context.out, outputPath, "wb");
     if (err != 0) {
         printf("failed to open file rcode=%d\n", err);
         return EXIT_FAILURE;
     }
+ #else
+    context.out = fopen(outputPath, "wb");
+    if (context.out == NULL) {
+        perror("failed to open file");
+	return EXIT_FAILURE;
+    }
+ #endif
 
     if (!omitHeader) {
         // Write WAV header, file position will be at start of data portion

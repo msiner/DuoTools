@@ -10,4 +10,5 @@ add_executable(
     wav.h
     ${PROJECT_SOURCE_DIR}/DuoEngine/DuoEngine.h
     ${PROJECT_SOURCE_DIR}/DuoEngine/DuoParse.h
-    ${PROJECT_SOURCE_DIR}/DuoEngine/getopt.h)
+    ${PROJECT_SOURCE_DIR}/DuoEngine/windows_getopt.h
+    ${PROJECT_SOURCE_DIR}/DuoEngine/posix_conio.h)

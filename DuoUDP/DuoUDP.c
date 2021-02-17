@@ -20,15 +20,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>
 #include <winsock.h>
 #include <wsipv6ok.h>
 #include <conio.h>
+#include "windows_getopt.h"
+#else
+#include <unistd.h>
+#include <sys/socket.h>
+#include <getopt.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#include "posix_conio.h"
+
+#define INVALID_SOCKET (-1)
+#endif
 
 #include <stdio.h>
 
 
-#include "getopt.h"
 #include "DuoEngine.h"
 #include "DuoParse.h"
 
@@ -74,11 +86,17 @@ Arguments:\n\
       the default of the unspecified value will be used.\n\
 \n";
 
-
+#if defined(_WIN32) || (_WIN64)
 struct Context {
     SOCKET sock;
     struct sockaddr_in dest;
 };
+#else
+struct Context {
+    int sock;
+    struct sockaddr_in dest;
+};
+#endif
 
 
 static void transferCallback(struct DuoEngineTransfer* transfer, void* userContext) {
@@ -87,9 +105,15 @@ static void transferCallback(struct DuoEngineTransfer* transfer, void* userConte
     rcode = sendto(
         context->sock, (char*)transfer->data, transfer->numBytes, 0,
         (struct sockaddr*)&context->dest, sizeof(context->dest));
+#if defined(_WIN32) || defined(_WIN64)
     if (rcode == SOCKET_ERROR) {
         printf("sendto failed with error=%d\n", WSAGetLastError());
-    }
+	  }
+#else
+    if (rcode == -1) {
+        perror("sendto failed");
+	  }
+#endif
 }
 
 
@@ -208,7 +232,6 @@ int main(int argc, char** argv) {
     struct DuoEngine engine;
     duoEngineInit(&engine);
 
-    WSADATA wsaData;
     struct Context context;
     int rcode = 0;
 
@@ -304,13 +327,20 @@ int main(int argc, char** argv) {
     printf("USB Bulk Mode: %s\n", engine.usbBulkMode ? "true" : "false");
     printf("Max Fs Mode: %s\n", engine.maxSampleRate ? "true" : "false");
 
+#if defined(_WIN32) || (_WIN64)
+    WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
         printf("WSAStartup() failed");
         return EXIT_FAILURE;
     }
+#endif
 
     if ((context.sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET) {
+#if defined(_WIN32) || (_WIN64)
         printf("socket creation failed error=%u", WSAGetLastError());
+#else
+        perror("socket creation failed:");
+#endif
         return EXIT_FAILURE;
     }
 
@@ -332,8 +362,12 @@ int main(int argc, char** argv) {
     printf("PRESS q to QUIT\n");
     rcode = duoEngineRun(&engine);
 
+#if defined(_WIN32) || defined(_WIN64)
     closesocket(context.sock);
     WSACleanup();
+#else
+    close(context.sock);
+#endif
 
     if (rcode != 0) {
         return EXIT_FAILURE;
