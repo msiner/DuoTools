@@ -57,7 +57,7 @@ Options:\n\
       Both filters can be enabled by providing the -n option twice\n\
       (once for each filter). By default, both filters are disabled.\n\
   -w seconds: Run the radio for the specified number of seconds to\n\
-      warm up and stabilize performance before capture (default=0).\n\
+      warm up and stabilize performance before capture (default=2).\n\
       During the warmup period, samples are discarded.\n\
   -f: Convert samples to floating point\n\
   -o: Omit the WAV header. Samples will start at beginning of file.\n\
@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
     char opt = 0;
     char defaultPath[] = "duo.wav";
     char* outputPath = defaultPath;
-    unsigned int warmup = 0;
+    unsigned int warmup = 2;
     bool omitHeader = false;
 
     struct DuoEngine engine;
