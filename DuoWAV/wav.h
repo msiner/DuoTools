@@ -174,7 +174,7 @@ static void wavHeaderInit(
 */
 static void wavHeaderUpdate(struct WavHeader* head, uint32_t dataBytesWritten) {
     head->riff.chunkSize = sizeof(struct WavHeader) - 8 + dataBytesWritten;
-    uint32_t bytesPerFrame = head->fmt.bitsPerSample * 8 * head->fmt.numChannels;
+    uint32_t bytesPerFrame = head->fmt.bitsPerSample / 8 * head->fmt.numChannels;
     head->fact.sampleLength = dataBytesWritten / bytesPerFrame;
     head->data.chunkSize = dataBytesWritten;
 }
