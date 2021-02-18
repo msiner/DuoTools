@@ -591,7 +591,7 @@ static void populateControl(struct Context* context, struct DuoEngineControl* co
         return;
     }
     chanParams = params->rxChannelA;
-    control->tuneFreq = chanParams->tunerParams.rfFreq.rfHz;
+    control->tuneFreq = (float)chanParams->tunerParams.rfFreq.rfHz;
     control->agcBandwidth = chanParams->ctrlParams.agc.enable;
     control->agcSetPoint = chanParams->ctrlParams.agc.setPoint_dBfs;
     control->lnaState = chanParams->tunerParams.gain.LNAstate;
