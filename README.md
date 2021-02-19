@@ -57,7 +57,7 @@ Usage: DuoWAV.exe [-h] [-m max] [-a agchz] [-t agcdb] [-l lna] [-d decim]
 Options:
   -h: print this help message
   -m max: maximum transfer size in bytes (default=10240)
-  -a 0|5|50|100: AGC loop bandwidth in Hz (default=0)
+  -a 0|5|50|100: AGC loop bandwidth in Hz (default=5)
   -t [-72-0]: AGC set point in dBFS (default=-30)
   -l 0-9: LNA state where 0 provides the least RF gain reduction.
       Default value is 4 (20-37 dB reduction depending on frequency).
@@ -70,7 +70,7 @@ Options:
       Both filters can be enabled by providing the -n option twice
       (once for each filter). By default, both filters are disabled.
   -w seconds: Run the radio for the specified number of seconds to
-      warm up and stabilize performance before capture (default=0).
+      warm up and stabilize performance before capture (default=2).
       During the warmup period, samples are discarded.
   -f: Convert samples to floating point
   -o: Omit the WAV header. Samples will start at beginning of file.
@@ -113,7 +113,7 @@ Usage: DuoUDP.exe [-h] [-m mtu] [-a agchz] [-t agcdb] [-l lna] [-d decim]
 Options:
   -h: print this help message
   -m mtu: packet MTU (default=1500)
-  -a 0|5|50|100: AGC loop bandwidth in Hz (default=0)
+  -a 0|5|50|100: AGC loop bandwidth in Hz (default=5)
   -t [-72-0]: AGC set point in dBFS (default=-30)
   -l 0-9: LNA state where 0 provides the least RF gain reduction.
       Default value is 4 (20-37 dB reduction depending on frequency).

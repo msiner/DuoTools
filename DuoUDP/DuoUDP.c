@@ -40,6 +40,7 @@ SOFTWARE.
 
 #include <stdio.h>
 
+#define DEFAULT_AGC_BANDWIDTH (5)
 
 #include "DuoEngine.h"
 #include "DuoParse.h"
@@ -52,7 +53,7 @@ Usage: DuoUDP.exe [-h] [-m mtu] [-a agchz] [-t agcdb] [-l lna] [-d decim]\n\
 Options:\n\
   -h: print this help message\n\
   -m mtu: packet MTU (default=1500)\n\
-  -a 0|5|50|100: AGC loop bandwidth in Hz (default=0)\n\
+  -a 0|5|50|100: AGC loop bandwidth in Hz (default=5)\n\
   -t [-72-0]: AGC set point in dBFS (default=-30)\n\
   -l 0-9: LNA state where 0 provides the least RF gain reduction.\n\
       Default value is 4 (20-37 dB reduction depending on frequency).\n\
